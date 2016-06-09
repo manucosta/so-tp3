@@ -6,7 +6,7 @@ CC= 	gcc
 MPIROOT= /usr
 MPICC=	$(MPIROOT)/bin/mpicc
 
-INCL= -I$(MPIROOT)/include
+INCL= -I$(MPIROOT)/include/mpi
 SRCS= eleccion.c main.c control.c
 OBJS= $(SRCS:%.c=%.o)
 BIN= eleccion_lider

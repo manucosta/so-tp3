@@ -1,9 +1,13 @@
 #ifndef	_ELECCION_H
 #define	_ELECCION_H
 
+#define	TAG_ELECCION	11
+
+
 /* Enumerado para ver si soy o no líder. */
 enum status { NO_LIDER, LIDER };
 typedef enum status t_status;
+
 
 /* PID de elección de líder. */
 typedef unsigned short int t_pid;
