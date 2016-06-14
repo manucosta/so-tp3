@@ -2,6 +2,7 @@
 #define	_ELECCION_H
 
 #define	TAG_ELECCION	11
+#define	TAG_ACK	12
 
 
 /* Enumerado para ver si soy o no líder. */
