@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include "eleccion.h"
 
-const int t = 15;
+const int t = 10;
 
 static t_pid siguiente_pid(t_pid pid, int es_ultimo){
  t_pid res= 0; /* Para silenciar el warning del compilador. */
@@ -25,7 +25,7 @@ void iniciar_eleccion(t_pid pid, int es_ultimo) {
 	MPI_Status estado;
 	while(ack == 0){
 		flag_msg = 0;
-		printf("Soy: %d y empece en: %d\n", pid, siguiente);	
+		//printf("Soy: %d y empece en: %d\n", pid, siguiente);	
 		MPI_Isend(&buffer, //Donde está el mensaje que mandamos
 							2, //Cuántos datos envío
 							MPI_INT, //Qué tipo de dato envío
@@ -47,7 +47,7 @@ void iniciar_eleccion(t_pid pid, int es_ultimo) {
 	  }
 	  siguiente = siguiente_pid(siguiente, 0);
 	  if(ahora > tiempo_maximo_ack) continue;
-		printf("Soy: %d y recibi ACK de: %d\n", pid, estado.MPI_SOURCE);  
+		//printf("Soy: %d y recibi ACK de: %d\n", pid, estado.MPI_SOURCE);  
 	  double respuesta;
 	  MPI_Irecv(&respuesta, //Donde guardamos el mensaje que llega
 	  					1, //Cuántos datos me llegan
@@ -65,7 +65,7 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
 	static t_status status= NO_LIDER;
 	double ahora= MPI_Wtime();
 	double tiempo_maximo= ahora+timeout;
-	t_pid proximo= siguiente_pid(pid, es_ultimo);
+	t_pid proximo = siguiente_pid(pid, es_ultimo);
 	int flag_msg;
 	MPI_Request request;
 
@@ -83,7 +83,7 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
 	  }
 	  if(ahora >= tiempo_maximo) break;
 	  /***Le aviso al proceso que me mandó la tupla que la recibí***/
-	  printf("Soy: %d, recibi mensaje de: %d y le respondí.\n", pid, estado.MPI_SOURCE);
+	  //printf("Soy: %d, recibi mensaje de: %d y le respondí.\n", pid, estado.MPI_SOURCE);
 	  MPI_Isend(&ahora, //Donde está el mensaje que mandamos
 					1, //Cuántos datos envío
 					MPI_DOUBLE, //Qué tipo de dato envío
@@ -144,12 +144,13 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
 		  						 );
 		  	ahora = MPI_Wtime();
 		  }
+		  int asd = proximo;//sacar despues
 		  proximo = siguiente_pid(proximo, 0);//x absurdo
 		  if(ahora > tiempo_maximo_ack){
-		  	printf("Soy: %d y no me respondio. Envio a: %d\n", pid, proximo);
+		  	printf("Soy: %d y %d no me respondio. Envio a: %d\n", pid, asd, proximo);
 		  	continue;
 		  }
-		  printf("Soy: %d y recibi mensaje de: %d\n", pid, estado_ack.MPI_SOURCE);
+		  //printf("Soy: %d y recibi mensaje de: %d\n", pid, estado_ack.MPI_SOURCE);
 		  double respuesta;
 		  MPI_Irecv(&respuesta, 							//Donde guardamos el mensaje que llega
 		  					1, 												//Cuántos datos me llegan
