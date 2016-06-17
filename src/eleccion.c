@@ -17,44 +17,44 @@ static t_pid siguiente_pid(t_pid pid, int es_ultimo) {
 
 void iniciar_eleccion(t_pid pid, int es_ultimo) {
   int buffer[] = {pid, pid}; // Creamos la tupla <i, cl> a enviar con i = ID y cl = ID
-  t_pid siguiente = siguiente_pid(pid, es_ultimo); // Inicializamos siguiente con el valor = (ID+1) Û (1) dependiendo si es el ˙ltimo proceso en el anillo o no
-  MPI_Request request; // Creamos la estructura necesaria para poder invocar a la funciÛn MPI_Isend() y MPI_Irecv()
+  t_pid siguiente = siguiente_pid(pid, es_ultimo); // Inicializamos siguiente con el valor = (ID+1) √≥ (1) dependiendo si es el √∫ltimo proceso en el anillo o no
+  MPI_Request request; // Creamos la estructura necesaria para poder invocar a la funci√≥n MPI_Isend() y MPI_Irecv()
   
-  int ack = 0; // ack va a servir como una variable booleana para verificar si le llegÛ o no el mensaje
-  int flag_msg; // flag_msg va a servir como una variable booleana para verificar si este proceso recibiÛ el mensaje
-  MPI_Status estado; // Variable necesaria para almacenar la informaciÛn del mensaje recibido
-  while(ack == 0) { // Este while va a estar ciclando mientras no le haya llegado el mensaje al siguiente en el anillo (se le acabÛ el timeout porque esta muerto, o bien porque estaba ocupado con otra cosa)
-    flag_msg = 0; // En cada iteraciÛn reinicializamos el flag en 0 (false)
-    MPI_Isend(&buffer, 2, MPI_INT,//
-              siguiente,          // A quiÈn se lo envÌo
-              TAG_ELECCION,       // La clasificaciÛn del mensaje
+  int ack = 0; // ack va a servir como una variable booleana para verificar si le lleg√≥ o no el mensaje
+  int flag_msg; // flag_msg va a servir como una variable booleana para verificar si este proceso recibi√≥ el mensaje
+  MPI_Status estado; // Variable necesaria para almacenar la informaci√≥n del mensaje recibido
+  while(ack == 0) { // Este while va a estar ciclando mientras no le haya llegado el mensaje al siguiente en el anillo (se le acab√≥ el timeout porque esta muerto, o bien porque estaba ocupado con otra cosa)
+    flag_msg = 0; // En cada iteraci√≥n reinicializamos el flag en 0 (false)
+    MPI_Isend(&buffer, 2, MPI_INT,// Env√≠o por buffer dos valores de tipo MPI_INT (la tupla <ID, ID>)
+              siguiente,          // A qui√©n se lo env√≠o
+              TAG_ELECCION,       // La clasificaci√≥n del mensaje
               MPI_COMM_WORLD,     // El comm por defecto que tiene a todos los procesos del 0 al N-1, con N = total de procesos
-              &request            // Identifica la comunicaciÛn entre los procesos que intervienen en la misma
+              &request            // Identifica la comunicaci√≥n entre los procesos que intervienen en la misma
               );
-    int tiempo_maximo_ack = MPI_Wtime() + t; // Calculo el tiempo m·ximo de espera para esperar el ACK
-    int ahora = MPI_Wtime(); // Guardo el tiempo actual para poder comparar y determinar si me pasÈ del timeout o no
-    while(!flag_msg && ahora <= tiempo_maximo_ack) { // Este while va a estar ciclando mientras no se haya recibido un mensaje y no se haya pasado el tiempo m·ximo para el ACK
-      MPI_Iprobe(siguiente,       // De quiÈn voy a ver si me envio un mensaje
-                 TAG_ACK,         // 
-                 MPI_COMM_WORLD,  // 
-                 &flag_msg,       // 
-                 &estado          // 
+    int tiempo_maximo_ack = MPI_Wtime() + t; // Calculo el tiempo m√°ximo de espera para esperar el ACK
+    int ahora = MPI_Wtime(); // Guardo el tiempo actual para poder comparar y determinar si me pas√© del timeout o no
+    while(!flag_msg && ahora <= tiempo_maximo_ack) { // Este while va a estar ciclando mientras no se haya recibido un mensaje y no se haya pasado el tiempo m√°ximo para el ACK
+      MPI_Iprobe(siguiente,       // De qui√©n voy a ver si me envio un mensaje
+                 TAG_ACK,         // La clasificaci√≥n del mensaje
+                 MPI_COMM_WORLD,  // El comm por defecto que tiene a todos los procesos del 0 al N-1, con N = total de procesos
+                 &flag_msg,       // El flag para determinar si hay o no un mensaje
+                 &estado          // Guarda informaci√≥n relevante como el rank del proceso que envi√≥ el ACK
                  );
-      ahora = MPI_Wtime();
+      ahora = MPI_Wtime(); // Actualizo la hora actual para usar como condici√≥n de corte (timeout) junto con el flag
     }
-    siguiente = siguiente_pid(siguiente, 0);
-    if(ahora > tiempo_maximo_ack) continue;
-    printf("Soy: %d y recibi ACK de: %d\n", pid, estado.MPI_SOURCE);  
-    double respuesta;
-    MPI_Irecv(&respuesta, //Donde guardamos el mensaje que llega
-              1, //Cu·ntos datos me llegan
-              MPI_DOUBLE,  //QuÈ tipo de dato me llega
-              estado.MPI_SOURCE, 
-              TAG_ACK, 
-              MPI_COMM_WORLD, 
-              &request
+    siguiente = siguiente_pid(siguiente, 0); // Sirve s√≥lo si tengo que enviarle un mensaje al siguiente proceso porque el actual no respondi√≥ el ACK
+    if(ahora > tiempo_maximo_ack) continue; // Si sal√≠ del while por timeout, volver a ciclar para enviar el mensaje al siguiente proceso
+    printf("Soy: %d y recibi ACK de: %d\n", pid, estado.MPI_SOURCE); // S√≥lo para testear cosillas
+    double respuesta; // Oh, hemos declarado una variable 'respuesta' para almacenar el mensaje ACK (NO DEBERIA SER ARRAY DE CHARS QUE CONTENGAN "OK"?!)
+    MPI_Irecv(&respuesta,         // Donde guardamos el mensaje que llega
+              1,                  // Cu√°ntos datos me llegan
+              MPI_DOUBLE,         // Qu√© tipo de dato me llega
+              estado.MPI_SOURCE,  // De qui√©n lo recibo
+              TAG_ACK,            // La clasificaci√≥n del mensaje
+              MPI_COMM_WORLD,     // El comm por defecto que tiene a todos los procesos del 0 al N-1, con N = total de procesos
+              &request            // Identifica la comunicaci√≥n entre los procesos que intervienen en la misma
               );
-    if(respuesta <= tiempo_maximo_ack) ack = 1;
+    if(respuesta <= tiempo_maximo_ack) ack = 1; // Si llego el OK del ACK entonces pongo ack en true para salir del ciclo. DEBERIA CHECKEAR POR OK EN LUGAR DEL TIEMPO
   }
 }
 
@@ -73,19 +73,19 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
       MPI_Iprobe(MPI_ANY_SOURCE, //Espero un mensaje de cualquier fuente
                  TAG_ELECCION, //
                  MPI_COMM_WORLD, //
-                 &flag_msg, //Si recibÌ un mensaje se pone en 1
-                 &estado //Me dice quiÈn y con que tag me mandÛ el mensaje
+                 &flag_msg, //Si recib√≠ un mensaje se pone en 1
+                 &estado //Me dice qui√©n y con que tag me mand√≥ el mensaje
                  );
       ahora = MPI_Wtime();
     }
     if(ahora >= tiempo_maximo) break;
-    /***Le aviso al proceso que me mandÛ la tupla que la recibÌ***/
-    printf("Soy: %d, recibi mensaje de: %d y le respondÌ.\n", pid, estado.MPI_SOURCE);
+    /***Le aviso al proceso que me mand√≥ la tupla que la recib√≠***/
+    printf("Soy: %d, recibi mensaje de: %d y le respond√≠.\n", pid, estado.MPI_SOURCE);
     char ok[] = {'O', 'K'};
-    MPI_Isend(&ok, //Donde est· el mensaje que mandamos
-          2, //Cu·ntos datos envÌo
-          MPI_CHAR, //QuÈ tipo de dato envÌo
-          estado.MPI_SOURCE, //Le respondo a quien me envÌo la tupla
+    MPI_Isend(&ok, //Donde est√° el mensaje que mandamos
+          2, //Cu√°ntos datos env√≠o
+          MPI_CHAR, //Qu√© tipo de dato env√≠o
+          estado.MPI_SOURCE, //Le respondo a quien me env√≠o la tupla
           TAG_ACK, 
           MPI_COMM_WORLD, 
           &request
@@ -93,8 +93,8 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
     
     int buffer[2];
     MPI_Irecv(&buffer, //Donde guardamos el mensaje que llega
-              2, //Cu·ntos datos me llegan
-              MPI_INT,  //QuÈ tipo de dato me llega
+              2, //Cu√°ntos datos me llegan
+              MPI_INT,  //Qu√© tipo de dato me llega
               estado.MPI_SOURCE, 
               TAG_ELECCION, 
               MPI_COMM_WORLD, 
@@ -104,14 +104,14 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
     int i = buffer[0];
     int cl = buffer[1];
     if(i == pid) { //Dio toda la vuelta
-      if(cl > pid) { //El lÌder est· adelante, hay que avisarle
+      if(cl > pid) { //El l√≠der est√° adelante, hay que avisarle
         buffer[0] = cl; //El par es <cl,cl>
-      } else { //El lÌder soy yo
+      } else { //El l√≠der soy yo
         status = LIDER;
         continue;
       }
     } else { //No dio toda la vuelta
-      if(pid > cl) { //Nuevo lÌder potencial
+      if(pid > cl) { //Nuevo l√≠der potencial
         buffer[1] = pid;
       }
     }
@@ -122,9 +122,9 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
     proximo = siguiente_pid(pid, es_ultimo);
     while(ack == 0){
       flag_msg_ack = 0;
-      MPI_Isend(&buffer, //Donde est· el mensaje que mandamos
-                2, //Cu·ntos datos envÌo
-                MPI_INT, //QuÈ tipo de dato envÌo
+      MPI_Isend(&buffer, //Donde est√° el mensaje que mandamos
+                2, //Cu√°ntos datos env√≠o
+                MPI_INT, //Qu√© tipo de dato env√≠o
                 proximo, 
                 TAG_ELECCION, 
                 MPI_COMM_WORLD, 
@@ -151,8 +151,8 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
       //printf("Soy: %d y recibi mensaje de: %d\n", pid, estado_ack.MPI_SOURCE);
       char respuesta[] = {'K', 'O'};
       MPI_Irecv(&respuesta,               //Donde guardamos el mensaje que llega
-                2,                        //Cu·ntos datos me llegan
-                MPI_CHAR,               //QuÈ tipo de dato me llega
+                2,                        //Cu√°ntos datos me llegan
+                MPI_CHAR,               //Qu√© tipo de dato me llega
                 estado_ack.MPI_SOURCE, 
                 TAG_ACK, 
                 MPI_COMM_WORLD, 
@@ -164,5 +164,5 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
   }
 
  /* Reporto mi status al final de la ronda. */
- printf("Proceso %u %s lÌder.\n", pid, (status==LIDER ? "es" : "no es"));
+ printf("Proceso %u %s l√≠der.\n", pid, (status==LIDER ? "es" : "no es"));
 }
