@@ -19,7 +19,8 @@ void iniciar_eleccion(t_pid pid, int es_ultimo) {
   int buffer[] = {pid, pid}; // Creamos la tupla <i, cl> a enviar con i = ID y cl = ID
   t_pid siguiente = siguiente_pid(pid, es_ultimo); // Inicializamos siguiente con el valor = (ID+1) ó (1) dependiendo si es el último proceso en el anillo o no
   MPI_Request request; // Creamos la estructura necesaria para poder invocar a la función MPI_Isend() y MPI_Irecv()
-  
+  // Tengo que enviar la tupla <pid,pid> al siguiente proceso en el anillo. Si no me responde que le llegó el mensaje, significa que el proceso
+  // estaba caido y entonces le tengo que enviar al siguiente del siguiente en el anillo, y así hasta que uno responda el ACK.
   int ack = 0; // ack va a servir como una variable booleana para verificar si le llegó o no el mensaje
   int flag_msg; // flag_msg va a servir como una variable booleana para verificar si este proceso recibió el mensaje
   MPI_Status estado; // Variable necesaria para almacenar la información del mensaje recibido
@@ -54,7 +55,7 @@ void iniciar_eleccion(t_pid pid, int es_ultimo) {
               MPI_COMM_WORLD,     // El comm por defecto que tiene a todos los procesos del 0 al N-1, con N = total de procesos
               &request            // Identifica la comunicación entre los procesos que intervienen en la misma
               );
-    if(respuesta <= tiempo_maximo_ack) ack = 1; // Si llego el OK del ACK entonces pongo ack en true para salir del ciclo. DEBERIA CHECKEAR POR OK EN LUGAR DEL TIEMPO
+    if(respuesta <= tiempo_maximo_ack) ack = 1; // Si llego el OK del ACK entonces pongo ack en true para salir del ciclo porque ya le pudo enviar a un proceso la tupla. DEBERIA CHECKEAR POR OK EN LUGAR DEL TIEMPO
   }
 }
 
@@ -119,13 +120,16 @@ void eleccion_lider(t_pid pid, int es_ultimo, unsigned int timeout){
         buffer[1] = pid; // El par es <i,pid>
       }
     }
-
+    // Una vez que recibí la tupla, le envíe el ACK al que me la envió e hice la lógica para determinar el potencial lider, tengo
+    // que enviarle la tupla al siguiente en el anillo, y esperar su ACK. Si no llega su ACK entonces quiere decir que ese proceso estaba
+    // muerto y entonces le envío al siguiente del siguiente en el anillo, y así hasta que a uno le llegue
     int ack = 0; // Creo una variable ack. Sirve para saber si me llego el ACK indicado
     int flag_msg_ack = 0; // Creo una variable flag_msg_ack. Sirve para saber si ya se recibió el mensaje que envié
     MPI_Status estado_ack; // Esta variable es necesaria para obtener información sobre la comunicación
     proximo = siguiente_pid(pid, es_ultimo); // Calculo el proximo pid al cual le tengo que enviar la tupla
     while(ack == 0) { // Mientras no haya recibido el ACK indicando que se recibió la tupla que envié...
       flag_msg_ack = 0; // Reinicio el flag en 0
+      // Le envío la tupla
       MPI_Isend(&buffer,        // Donde está el mensaje que mandamos
                 2,              // Cuántos datos envío
                 MPI_INT,        // Qué tipo de dato envío
